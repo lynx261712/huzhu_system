@@ -1,7 +1,6 @@
 import requests
 import os
 
-#requests报错
 os.environ["NO_PROXY"] = "127.0.0.1,localhost"
 API_BASE_URL = "http://127.0.0.1:5000/api"
 
@@ -21,10 +20,17 @@ class APIClient:
         return requests.get(f"{API_BASE_URL}/skills", params={"q": keyword})
 
     @staticmethod
-    def get_lost_items(item_type=None, keyword=None):
-        params = {"q": keyword}
+    def get_lost_items(item_type=None, keyword=None, location=None):
+        params = {}
+        if keyword: params['keyword'] = keyword
+        if location: params['location'] = location
         if item_type is not None: params['type'] = item_type
         return requests.get(f"{API_BASE_URL}/lost-items", params=params)
+
+    #获取标签云
+    @staticmethod
+    def get_search_tags():
+        return requests.get(f"{API_BASE_URL}/lost-items/tags")
 
     @staticmethod
     def get_user_info(user_id):
