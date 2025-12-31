@@ -3,6 +3,8 @@ from view.login import LoginView
 from view.profile import ProfileView
 from view.detail import DetailView
 from view.home import HomeView
+from view.my_help import MyHelpView
+from view.my_posts import MyPostsView 
 
 
 def main(page: ft.Page):
@@ -12,7 +14,6 @@ def main(page: ft.Page):
     page.bgcolor = "#f0f2f5"
     page.padding = 0
 
-    #全局状态
     current_user = {"id": None, "name": None}
 
     #提示框
@@ -25,46 +26,68 @@ def main(page: ft.Page):
         snack_bar.open = True
         page.update()
 
-
     body = ft.Container(expand=True)
 
-    #导航回调
-    def switch_tab(e):
-        idx = e if isinstance(e, int) else e.control.data
-
-        #更新底部图标颜色
-        for i, btn in enumerate(nav_bar.content.controls):
-            btn.icon_color = "blue" if i == idx else "grey"
-
-        if idx == 0:  #首页
-            body.content = home_view.get_main_view()
-        elif idx == 1:  #发布
-            body.content = home_view.get_post_view(switch_tab)
-        elif idx == 2:  #个人中心
-            if current_user['id']:
-                body.content = ProfileView(current_user['id'], logout, show_msg)
-            else:
-                body.content = LoginView(login_success, show_msg)
-        page.update()
-
+    #导航 回调
     def login_success(user_data):
         current_user['id'] = user_data['user_id']
         current_user['name'] = user_data['username']
         show_msg(f"欢迎 {current_user['name']}", "green")
-        switch_tab(2)  
+        switch_tab(2)
 
     def logout(e):
         current_user['id'] = None
-        switch_tab(2)  #刷新回登录页
+        current_user['name'] = None
+        show_msg("已退出登录", "green")
+        switch_tab(2)
 
     def go_detail(item, category):
-        body.content = DetailView(item, category, lambda e: switch_tab(0), show_msg)
+        body.content = DetailView(item, category, lambda e: switch_tab(0), show_msg, current_user)
         page.update()
 
-    #初始化views
+    def go_my_help(e):
+        """跳转到我的帮助"""
+        body.content = MyHelpView(current_user['id'], lambda e: switch_tab(2), show_msg)
+        page.update()
+
+    def go_my_posts(e):
+        """跳转到我的发布管理"""
+        body.content = MyPostsView(
+            user_id=current_user['id'],
+            on_back=lambda e: switch_tab(2),  #返回个人中心
+            show_msg=show_msg
+        )
+        page.update()
+
+    def switch_tab(e):
+        idx = e if isinstance(e, int) else e.control.data
+
+        for i, btn in enumerate(nav_bar.content.controls):
+            btn.icon_color = "blue" if i == idx else "grey"
+
+        #路由
+        if idx == 0:  #首页
+            body.content = home_view.get_main_view()
+
+        elif idx == 1:  #发布页
+            body.content = home_view.get_post_view(on_success_nav=switch_tab)
+
+        elif idx == 2:  #个人中心
+            if current_user['id']:
+                body.content = ProfileView(
+                    user_id=current_user['id'],
+                    on_logout=logout,
+                    show_msg=show_msg,
+                    on_nav_to_help=go_my_help,
+                    on_nav_to_my_posts=go_my_posts
+                )
+            else:
+                body.content = LoginView(login_success, show_msg)
+
+        page.update()
+
     home_view = HomeView(page, show_msg, go_detail, lambda: current_user)
 
-    #底部导航
     nav_bar = ft.Container(
         bgcolor="white", padding=10, border=ft.border.only(top=ft.BorderSide(1, "#e0e0e0")),
         content=ft.Row([
@@ -75,8 +98,6 @@ def main(page: ft.Page):
     )
 
     page.add(body, nav_bar)
-
-    #启动默认加载首页
     switch_tab(0)
 
 

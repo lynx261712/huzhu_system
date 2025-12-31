@@ -27,7 +27,6 @@ class APIClient:
         if item_type is not None: params['type'] = item_type
         return requests.get(f"{API_BASE_URL}/lost-items", params=params)
 
-    #获取标签云
     @staticmethod
     def get_search_tags():
         return requests.get(f"{API_BASE_URL}/lost-items/tags")
@@ -46,7 +45,6 @@ class APIClient:
 
     @staticmethod
     def post_item(endpoint, data):
-        # endpoint: "skills" or "lost-items"
         return requests.post(f"{API_BASE_URL}/{endpoint}", json=data)
 
     @staticmethod
@@ -56,3 +54,26 @@ class APIClient:
     @staticmethod
     def interact(item_id, category):
         return requests.post(f"{API_BASE_URL}/interact", json={"item_id": item_id, "category": category})
+
+
+    @staticmethod
+    def accept_order(item_id, category, user_id):
+        """接单"""
+        return requests.post(f"{API_BASE_URL}/order/accept",
+                             json={"id": item_id, "category": category, "user_id": user_id})
+
+    @staticmethod
+    def finish_order(item_id, category):
+        """确认完成"""
+        return requests.post(f"{API_BASE_URL}/order/finish", json={"id": item_id, "category": category})
+
+    @staticmethod
+    def review_order(item_id, category, action):
+        """评价"""
+        return requests.post(f"{API_BASE_URL}/order/review",
+                             json={"id": item_id, "category": category, "action": action})
+
+    @staticmethod
+    def get_my_helps(user_id):
+        """获取我参与的互助列表"""
+        return requests.get(f"{API_BASE_URL}/user/helps/{user_id}")
