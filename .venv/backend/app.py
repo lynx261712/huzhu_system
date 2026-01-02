@@ -3,7 +3,7 @@ from flask import Flask
 from flask_cors import CORS
 from extensions import db
 from routes import auth, skills, lost_items, messages
-
+#
 def create_app():
     app = Flask(__name__, static_folder='static')
     app.json.ensure_ascii = False
