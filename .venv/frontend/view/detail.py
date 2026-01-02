@@ -27,15 +27,16 @@ def DetailView(item, category, on_back, show_msg, current_user):
             res = APIClient.accept_order(item['id'], category, current_user['id'])
             if res.status_code == 200:
                 show_msg("接单成功！请在'我的帮助'中查看", "green")
-                on_back(None)  
+                on_back(None)  #返回列表
             else:
                 show_msg(res.json().get('msg', "接单失败"))
         except Exception as ex:
             show_msg(str(ex))
 
+    #按钮
     action_row = ft.Row([
-        ft.ElevatedButton("💬 联系他", on_click=go_chat, expand=1),
-        ft.ElevatedButton("🙋‍♂️ 我来帮", on_click=do_accept, expand=1, bgcolor="orange", color="white")
+        ft.ElevatedButton("💬 联系", on_click=go_chat, expand=1),
+        ft.ElevatedButton("🙋‍♂️ 接收", on_click=do_accept, expand=1, bgcolor="orange", color="white")
     ])
 
     content_val = f"代价: {item.get('cost')}" if category == "skill" else f"描述: {item.get('desc')}"

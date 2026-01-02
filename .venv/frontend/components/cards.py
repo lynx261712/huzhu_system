@@ -86,7 +86,7 @@ def create_lost_card(item, on_click):
             ft.Container(
                 expand=True,
                 content=ft.Column([
-                    #顶部标签和时间
+                    # 顶部标签和时间
                     ft.Row([
                         ft.Container(
                             content=ft.Text(tag_text, size=11, color="white"),

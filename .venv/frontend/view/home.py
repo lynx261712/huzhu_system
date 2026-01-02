@@ -9,16 +9,28 @@ class HomeView:
         self.show_msg = show_msg
         self.on_item_click = on_item_click
         self.get_current_user = get_current_user
-
         self.current_category = "skill"
 
         self.filter_skill_type = None
+        self.filter_skill_keyword = ""  
         self.filter_lost_keyword = ""
         self.filter_lost_location = ""
 
+        #文件选择器
+        self.selected_image_path = None
+        self.file_picker = ft.FilePicker(on_result=self.on_file_picked)
+        self.page.overlay.append(self.file_picker)
+
+        self.image_path_text = ft.Text("未选择图片 (默认使用空白图)", size=12, color="grey")
+        self.upload_btn = ft.ElevatedButton(
+            "上传图片", icon=ft.Icons.IMAGE,
+            on_click=lambda _: self.file_picker.pick_files(allow_multiple=False,
+                                                           allowed_extensions=["jpg", "png", "jpeg"])
+        )
+
         #UI组件
         self.search_bar = ft.TextField(
-            hint_text="搜索...",
+            hint_text="快捷搜索...",
             prefix_icon=ft.Icons.SEARCH,
             border_radius=20,
             height=40,
@@ -28,32 +40,26 @@ class HomeView:
             on_submit=self.do_search
         )
 
-        self.category_toggle = ft.SegmentedButton(
-            selected={"skill"},
-            allow_multiple_selection=False,
-            allow_empty_selection=False,
-            on_change=self.handle_category_change,
-            segments=[
-                ft.Segment(value="skill", label=ft.Text("技能银行"), icon=ft.Icon(ft.Icons.TOKEN)),
-                ft.Segment(value="lost", label=ft.Text("失物招领"), icon=ft.Icon(ft.Icons.SEARCH)),
-            ]
-        )
-
+        #筛选按钮
         self.filter_btn = ft.IconButton(
             icon=ft.Icons.FILTER_LIST,
             tooltip="高级筛选",
-            on_click=self.open_filter_dispatcher,
-            bgcolor="white"
+            icon_color="blue",
+            on_click=self.open_filter_dispatcher
         )
 
-        self.toolbar = ft.Container(
-            padding=ft.padding.symmetric(horizontal=15, vertical=5),
-            content=ft.Row(
-                controls=[self.category_toggle, self.filter_btn],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-            )
+        #分类切换
+        self.category_toggle = ft.SegmentedButton(
+            selected={"skill"},
+            allow_multiple_selection=False,
+            on_change=self.handle_category_change,
+            segments=[
+                ft.Segment(value="skill", label=ft.Text("技能银行"), icon=ft.Icon(ft.Icons.TOKEN)),
+                ft.Segment(value="lost", label=ft.Text("失物招领"), icon=ft.Icon(ft.Icons.SEARCH))
+            ]
         )
 
+        #列表网格
         self.main_grid = ft.GridView(expand=True, spacing=10, run_spacing=10, padding=10)
 
         #发布页组件
@@ -61,7 +67,6 @@ class HomeView:
         self.input_desc = ft.TextField(label="详细描述", multiline=True, min_lines=3)
         self.input_loc = ft.TextField(label="地点", icon=ft.Icons.LOCATION_ON)
         self.input_cost = ft.TextField(label="代价/悬赏", icon=ft.Icons.MONETIZATION_ON, visible=False)
-
         self.pub_type_selector = ft.RadioGroup(content=ft.Column([
             ft.Text("请选择发布类型:", weight="bold"),
             ft.Radio(value="lost_0", label="丢失了 (失物)"),
@@ -70,13 +75,24 @@ class HomeView:
             ft.Radio(value="skill_2", label="需要帮助 (需求)")
         ]), value="lost_0", on_change=self.update_pub_ui)
 
+    def on_file_picked(self, e: ft.FilePickerResultEvent):
+        if e.files:
+            self.selected_image_path = e.files[0].path
+            self.image_path_text.value = f"已选择: {e.files[0].name}"
+            self.image_path_text.color = "blue"
+        else:
+            self.selected_image_path = None
+            self.image_path_text.value = "未选择图片"
+            self.image_path_text.color = "grey"
+        self.page.update()
+
     def handle_category_change(self, e):
         self.current_category = list(e.control.selected)[0]
-        self.filter_skill_type = None
-        self.filter_lost_keyword = ""
-        self.filter_lost_location = ""
-        self.search_bar.value = ""
         self.load_data()
+
+    def do_search(self, e):
+        self.load_data(self.search_bar.value)
+
 
     def open_filter_dispatcher(self, e):
         if self.current_category == "skill":
@@ -84,37 +100,104 @@ class HomeView:
         else:
             self.open_lost_filter_dialog(e)
 
+
     def open_skill_filter(self, e):
-        def set_type(val):
-            self.filter_skill_type = val
-            self.page.close_bottom_sheet()
-            self.load_data()
+        input_kw = ft.TextField(
+            label="关键词 (例如: python/取快递)",
+            value=self.filter_skill_keyword,
+            prefix_icon=ft.Icons.SEARCH
+        )
 
-        self.page.open(ft.BottomSheet(ft.Container(padding=20, content=ft.Column([
-            ft.Text("技能类型筛选", weight="bold", size=16), ft.Divider(),
-            ft.ListTile(leading=ft.Icon(ft.Icons.ALL_INCLUSIVE), title=ft.Text("全部显示"),
-                        on_click=lambda e: set_type(None)),
-            ft.ListTile(leading=ft.Icon(ft.Icons.HANDSHAKE), title=ft.Text("只看提供"), on_click=lambda e: set_type(1)),
-            ft.ListTile(leading=ft.Icon(ft.Icons.HELP), title=ft.Text("只看需求"), on_click=lambda e: set_type(2)),
-        ], tight=True))))
+        btn_provide = ft.ElevatedButton("只看【我能提供】", data=1)
+        btn_need = ft.ElevatedButton("只看【需要帮助】", data=2)
 
+        def update_btn_style():
+            btn_provide.bgcolor = "blue" if self.filter_skill_type == 1 else "grey"
+            btn_provide.color = "white"
+
+            btn_need.bgcolor = "blue" if self.filter_skill_type == 2 else "grey"
+            btn_need.color = "white"
+
+            if self.page: self.page.update()
+
+        def on_type_click(e):
+            clicked_val = e.control.data
+            if self.filter_skill_type == clicked_val:
+                #取消选中
+                self.filter_skill_type = None
+            else:
+                #选中
+                self.filter_skill_type = clicked_val
+            update_btn_style()
+
+        btn_provide.on_click = on_type_click
+        btn_need.on_click = on_type_click
+
+        #初始化样式
+        update_btn_style()
+
+        def do_confirm(e):
+            self.filter_skill_keyword = input_kw.value
+            self.page.dialog.open = False
+            self.page.update()
+            self.load_data()  
+
+        #定义弹窗
+        dlg = ft.AlertDialog(
+            title=ft.Text("筛选技能"),
+            content=ft.Column([
+                input_kw,
+                ft.Text("类型筛选:", weight="bold"),
+                ft.Row([btn_provide, btn_need], alignment=ft.MainAxisAlignment.SPACE_AROUND),
+                ft.Text("提示: 点击蓝色按钮可取消选中", size=10, color="grey")
+            ], height=180, tight=True),
+            actions=[
+                ft.TextButton("取消", on_click=lambda _: setattr(dlg, 'open', False) or self.page.update()),
+                ft.TextButton("确定", on_click=do_confirm),
+            ]
+        )
+        self.page.dialog = dlg
+        dlg.open = True
+        self.page.update()
+
+    #失物招领筛选弹窗
     def open_lost_filter_dialog(self, e):
-        input_kw = ft.TextField(label="关键词", value=self.filter_lost_keyword, prefix_icon=ft.Icons.TEXT_FIELDS)
-        input_loc = ft.TextField(label="地点", value=self.filter_lost_location, prefix_icon=ft.Icons.LOCATION_ON)
+        input_kw = ft.TextField(label="关键词 (物品名/描述)", value=self.filter_lost_keyword)
+        input_loc = ft.TextField(label="地点", value=self.filter_lost_location)
 
-        def apply_filter(e):
+        def do_confirm(e):
             self.filter_lost_keyword = input_kw.value
             self.filter_lost_location = input_loc.value
-            self.page.close_bottom_sheet()
+            dlg.open = False
+            self.page.update()
             self.load_data()
 
-        self.page.open(ft.BottomSheet(ft.Container(padding=20, height=400, content=ft.Column([
-            ft.Text("筛选", weight="bold"), input_kw, input_loc,
-            ft.ElevatedButton("确认", on_click=apply_filter)
-        ]))))
+        def do_clear(e):
+            self.filter_lost_keyword = ""
+            self.filter_lost_location = ""
+            input_kw.value = ""
+            input_loc.value = ""
+            self.page.update()
+
+        dlg = ft.AlertDialog(
+            title=ft.Text("高级筛选"),
+            content=ft.Column([
+                input_kw,
+                input_loc
+            ], height=180, tight=True),
+            actions=[
+                ft.TextButton("清空条件", on_click=do_clear),
+                ft.TextButton("确定", on_click=do_confirm),
+            ]
+        )
+        self.page.dialog = dlg
+        dlg.open = True
+        self.page.update()
+
 
     def load_data(self, keyword_from_bar=""):
         self.main_grid.controls.clear()
+
         if self.current_category == "skill":
             self.main_grid.runs_count = 2
             self.main_grid.child_aspect_ratio = 0.75
@@ -124,38 +207,50 @@ class HomeView:
 
         try:
             if self.current_category == "skill":
-                res = APIClient.get_skills(keyword_from_bar)
+                final_keyword = keyword_from_bar if keyword_from_bar else self.filter_skill_keyword
+
+                res = APIClient.get_skills(final_keyword)
+
                 if res.status_code == 200:
                     data = res.json().get('data', [])
-                    if self.filter_skill_type: data = [i for i in data if i['type'] == self.filter_skill_type]
-                    for item in data: self.main_grid.controls.append(
-                        create_skill_card(item, lambda e: self.on_item_click(e.control.data, "skill")))
+                    for item in data:
+                        if self.filter_skill_type is not None:
+                            if item.get('type') != self.filter_skill_type:
+                                continue
+
+                        self.main_grid.controls.append(
+                            create_skill_card(item, lambda e: self.on_item_click(e.control.data, "skill")))
             else:
-                final_kw = keyword_from_bar if keyword_from_bar else self.filter_lost_keyword
-                res = APIClient.get_lost_items(keyword=final_kw, location=self.filter_lost_location)
+                res = APIClient.get_lost_items(
+                    keyword=keyword_from_bar or self.filter_lost_keyword,
+                    location=self.filter_lost_location
+                )
                 if res.status_code == 200:
-                    data = res.json().get('data', [])
-                    for item in data: self.main_grid.controls.append(
-                        create_lost_card(item, lambda e: self.on_item_click(e.control.data, "lost")))
-
-            if not self.main_grid.controls:
-                self.main_grid.controls.append(
-                    ft.Column([ft.Icon(ft.Icons.SEARCH_OFF, size=60, color="grey"), ft.Text("无内容", color="grey")],
-                              alignment="center"))
+                    for item in res.json().get('data', []):
+                        self.main_grid.controls.append(
+                            create_lost_card(item, lambda e: self.on_item_click(e.control.data, "lost")))
         except Exception as e:
-            print(f"Load Error: {e}")
-        self.page.update()
+            print(f"Load error: {e}")
 
-    def do_search(self, e):
-        self.load_data(self.search_bar.value)
+        self.page.update()
 
     def get_main_view(self):
         self.load_data()
-        return ft.Column(
-            [ft.Container(content=self.search_bar, padding=ft.padding.only(left=15, right=15, top=10), bgcolor="white"),
-             self.toolbar, self.main_grid], spacing=0)
 
-    #发布功能区
+        search_row = ft.Row(
+            [
+                ft.Container(content=self.search_bar, expand=True),
+                self.filter_btn
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+        )
+
+        return ft.Column([
+            ft.Container(content=search_row, padding=ft.padding.only(left=15, right=15, top=10), bgcolor="white"),
+            ft.Container(padding=10, content=self.category_toggle),
+            self.main_grid
+        ], spacing=0)
+
     def update_pub_ui(self, e):
         val = self.pub_type_selector.value
         is_skill = "skill" in val
@@ -163,59 +258,51 @@ class HomeView:
         self.input_cost.visible = is_skill
         self.page.update()
 
+
     def get_post_view(self, on_success_nav):
         def submit(e):
             user = self.get_current_user()
             if not user['id']: return self.show_msg("请先登录")
 
-            selection = self.pub_type_selector.value 
-            category, type_val = selection.split('_')  
+            selection = self.pub_type_selector.value
+            if not selection: return self.show_msg("请选择类型")
 
-            payload = {"title": self.input_title.value, "user_id": user['id']}
+            category, type_val = selection.split('_')
+
+            form_data = {
+                "title": self.input_title.value,
+                "user_id": str(user['id']),
+                "type": type_val
+            }
+            if not form_data["title"]: return self.show_msg("标题不能为空")
 
             if category == "lost":
-                payload.update({
-                    "desc": self.input_desc.value,
-                    "location": self.input_loc.value,
-                    "type": int(type_val)  #0丢了, 1捡了
-                })
+                form_data.update({"desc": self.input_desc.value, "location": self.input_loc.value})
                 endpoint = "lost-items"
             else:
-                payload.update({
-                    "cost": self.input_cost.value or "面议",
-                    "type": int(type_val)  #1提供, 2需求
-                })
+                form_data.update({"cost": self.input_cost.value or "面议"})
                 endpoint = "skills"
 
             try:
-                APIClient.post_item(endpoint, payload)
-                self.show_msg("发布成功！", "green")
-                self.current_category = category
-                self.category_toggle.selected = {category}
-
-                #清空
-                self.input_title.value = ""
-                self.input_desc.value = ""
-                on_success_nav(0)
+                res = APIClient.post_item(endpoint, form_data, self.selected_image_path)
+                if res.status_code == 200:
+                    self.show_msg("发布成功！", "green")
+                    self.input_title.value = ""
+                    self.input_desc.value = ""
+                    self.input_loc.value = ""
+                    self.input_cost.value = ""
+                    self.selected_image_path = None
+                    self.image_path_text.value = "未选择图片"
+                    on_success_nav(0)
+                else:
+                    self.show_msg(f"失败: {res.json().get('msg')}")
             except Exception as ex:
-                self.show_msg(f"发布失败: {ex}")
+                self.show_msg(f"错误: {ex}")
 
-        return ft.Container(
-            padding=20,
-            content=ft.Column([
-                ft.Row([ft.Icon(ft.Icons.EDIT_SQUARE, color="blue"), ft.Text("发布新内容", size=20, weight="bold")]),
-                ft.Divider(),
-                ft.Container(
-                    content=self.pub_type_selector,
-                    bgcolor="white", padding=10, border_radius=10,
-                    border=ft.border.all(1, "#eee")
-                ),
-                self.input_title,
-                self.input_desc,
-                self.input_loc,
-                self.input_cost,
-                ft.Container(height=20),
-                ft.ElevatedButton("立即发布", on_click=submit, bgcolor="blue", color="white", width=float("inf"),
-                                  height=50)
-            ], scroll=ft.ScrollMode.AUTO)
-        )
+        return ft.Container(padding=20, content=ft.Column([
+            ft.Text("发布新内容", size=20, weight="bold"),
+            ft.Container(content=self.pub_type_selector, bgcolor="white", padding=10, border=ft.border.all(1, "#eee")),
+            self.input_title, self.input_desc, self.input_loc, self.input_cost,
+            ft.Row([self.upload_btn, self.image_path_text]),
+            ft.ElevatedButton("立即发布", on_click=submit, bgcolor="blue", color="white", width=float("inf"))
+        ], scroll=ft.ScrollMode.AUTO))

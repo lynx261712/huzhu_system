@@ -5,7 +5,7 @@ from api_client import APIClient
 def LoginView(on_login_success, show_msg):
     login_user = ft.TextField(label="用户名", width=280)
     login_pass = ft.TextField(label="密码", password=True, can_reveal_password=True, width=280)
-    login_contact = ft.TextField(label="联系方式", visible=False, width=280)
+    login_contact = ft.TextField(label="联系方式 (注册必填)", visible=False, width=280)
 
     state = {"is_register": False}
     btn_action = ft.ElevatedButton("登录", bgcolor="blue", color="white", width=280)
@@ -34,7 +34,7 @@ def LoginView(on_login_success, show_msg):
                 res = APIClient.login(u, p)
                 if res.status_code == 200:
                     d = res.json()['data']
-                    on_login_success(d)  #回调主程序
+                    on_login_success(d)  # 回调主程序
                 else:
                     show_msg(res.json().get('msg'))
         except Exception as ex:

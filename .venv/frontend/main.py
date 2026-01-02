@@ -4,19 +4,21 @@ from view.profile import ProfileView
 from view.detail import DetailView
 from view.home import HomeView
 from view.my_help import MyHelpView
-from view.my_posts import MyPostsView 
+from view.my_posts import MyPostsView
 
 
 def main(page: ft.Page):
+    #页面基础
     page.title = "校园互助平台"
     page.window.width = 400
     page.window.height = 800
     page.bgcolor = "#f0f2f5"
     page.padding = 0
 
+    #全局状态
     current_user = {"id": None, "name": None}
 
-    #提示框
+    #全局提示框
     snack_bar = ft.SnackBar(ft.Text(""))
     page.overlay.append(snack_bar)
 
@@ -28,7 +30,6 @@ def main(page: ft.Page):
 
     body = ft.Container(expand=True)
 
-    #导航 回调
     def login_success(user_data):
         current_user['id'] = user_data['user_id']
         current_user['name'] = user_data['username']
@@ -42,21 +43,16 @@ def main(page: ft.Page):
         switch_tab(2)
 
     def go_detail(item, category):
+        #跳转详情页
         body.content = DetailView(item, category, lambda e: switch_tab(0), show_msg, current_user)
         page.update()
 
     def go_my_help(e):
-        """跳转到我的帮助"""
         body.content = MyHelpView(current_user['id'], lambda e: switch_tab(2), show_msg)
         page.update()
 
     def go_my_posts(e):
-        """跳转到我的发布管理"""
-        body.content = MyPostsView(
-            user_id=current_user['id'],
-            on_back=lambda e: switch_tab(2),  #返回个人中心
-            show_msg=show_msg
-        )
+        body.content = MyPostsView(current_user['id'], lambda e: switch_tab(2), show_msg)
         page.update()
 
     def switch_tab(e):
@@ -65,14 +61,11 @@ def main(page: ft.Page):
         for i, btn in enumerate(nav_bar.content.controls):
             btn.icon_color = "blue" if i == idx else "grey"
 
-        #路由
-        if idx == 0:  #首页
+        if idx == 0:
             body.content = home_view.get_main_view()
-
-        elif idx == 1:  #发布页
+        elif idx == 1:
             body.content = home_view.get_post_view(on_success_nav=switch_tab)
-
-        elif idx == 2:  #个人中心
+        elif idx == 2:
             if current_user['id']:
                 body.content = ProfileView(
                     user_id=current_user['id'],
