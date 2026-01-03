@@ -2,21 +2,20 @@ import flet as ft
 from api_client import APIClient
 
 
-def DetailView(item, category, on_back, show_msg, current_user):
+def DetailView(item, category, on_back, show_msg, current_user, on_nav_to_chat):
     detail_img = ft.Image(src=item['image'], width=float("inf"), height=200, fit=ft.ImageFit.COVER)
 
     #聊天/联系
     def go_chat(e):
-        try:
-            res = APIClient.interact(item['id'], category)
-            if res.status_code == 200:
-                contact = res.json()['data']['contact']
-                e.page.dialog = ft.AlertDialog(title=ft.Text("联系方式"),
-                                               content=ft.Text(f"对方联系方式: {contact}", size=18, color="blue"))
-                e.page.dialog.open = True
-                e.page.update()
-        except Exception as ex:
-            show_msg(str(ex))
+        if not current_user['id']: return show_msg("请先登录")
+
+        target_id = item.get('user_id')
+        target_name = item.get('user', '未知用户')
+
+        if str(target_id) == str(current_user['id']):
+            return show_msg("不能和自己聊天")
+
+        on_nav_to_chat(target_id, target_name)
 
     #接单
     def do_accept(e):
@@ -27,7 +26,7 @@ def DetailView(item, category, on_back, show_msg, current_user):
             res = APIClient.accept_order(item['id'], category, current_user['id'])
             if res.status_code == 200:
                 show_msg("接单成功！请在'我的帮助'中查看", "green")
-                on_back(None)  #返回列表
+                on_back(None)  
             else:
                 show_msg(res.json().get('msg', "接单失败"))
         except Exception as ex:

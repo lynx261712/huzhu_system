@@ -5,6 +5,7 @@ from view.detail import DetailView
 from view.home import HomeView
 from view.my_help import MyHelpView
 from view.my_posts import MyPostsView
+from view.chat import ChatView 
 
 
 def main(page: ft.Page):
@@ -15,7 +16,6 @@ def main(page: ft.Page):
     page.bgcolor = "#f0f2f5"
     page.padding = 0
 
-    #全局状态
     current_user = {"id": None, "name": None}
 
     #全局提示框
@@ -30,6 +30,7 @@ def main(page: ft.Page):
 
     body = ft.Container(expand=True)
 
+
     def login_success(user_data):
         current_user['id'] = user_data['user_id']
         current_user['name'] = user_data['username']
@@ -42,17 +43,50 @@ def main(page: ft.Page):
         show_msg("已退出登录", "green")
         switch_tab(2)
 
+    def render_chat(partner_id, partner_name, back_callback):
+        body.content = ChatView(
+            current_user=current_user,
+            partner_id=partner_id,
+            partner_name=partner_name,
+            on_back=back_callback,
+            show_msg=show_msg
+        )
+        page.update()
+
+    #详情页跳转
     def go_detail(item, category):
-        #跳转详情页
-        body.content = DetailView(item, category, lambda e: switch_tab(0), show_msg, current_user)
+        def chat_callback(pid, pname):
+            render_chat(pid, pname, lambda e: switch_tab(0))
+
+        body.content = DetailView(
+            item,
+            category,
+            lambda e: switch_tab(0),
+            show_msg,
+            current_user,
+            chat_callback 
+        )
         page.update()
 
     def go_my_help(e):
-        body.content = MyHelpView(current_user['id'], lambda e: switch_tab(2), show_msg)
+        def chat_callback(pid, pname):
+            render_chat(pid, pname, lambda e: go_my_help(None))
+
+        body.content = MyHelpView(
+            current_user['id'],
+            lambda e: switch_tab(2), 
+            show_msg,
+            on_nav_to_chat=chat_callback
+        )
         page.update()
 
+    #我的发布跳转
     def go_my_posts(e):
-        body.content = MyPostsView(current_user['id'], lambda e: switch_tab(2), show_msg)
+        body.content = MyPostsView(
+            current_user['id'],
+            lambda e: switch_tab(2),
+            show_msg
+        )
         page.update()
 
     def switch_tab(e):
@@ -71,8 +105,8 @@ def main(page: ft.Page):
                     user_id=current_user['id'],
                     on_logout=logout,
                     show_msg=show_msg,
-                    on_nav_to_help=go_my_help,
-                    on_nav_to_my_posts=go_my_posts
+                    on_nav_to_help=go_my_help,  
+                    on_nav_to_my_posts=go_my_posts 
                 )
             else:
                 body.content = LoginView(login_success, show_msg)
