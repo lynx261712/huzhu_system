@@ -12,7 +12,7 @@ class HomeView:
         self.current_category = "skill"
 
         self.filter_skill_type = None
-        self.filter_skill_keyword = ""  
+        self.filter_skill_keyword = ""
         self.filter_lost_keyword = ""
         self.filter_lost_location = ""
 
@@ -30,14 +30,15 @@ class HomeView:
 
         #UI组件
         self.search_bar = ft.TextField(
-            hint_text="快捷搜索...",
+            hint_text="搜索...",
             prefix_icon=ft.Icons.SEARCH,
             border_radius=20,
             height=40,
             content_padding=10,
             text_size=14,
             bgcolor="white",
-            on_submit=self.do_search
+            on_submit=self.do_search,
+            expand=True
         )
 
         #筛选按钮
@@ -47,6 +48,9 @@ class HomeView:
             icon_color="blue",
             on_click=self.open_filter_dispatcher
         )
+
+        #标签云区域初始化
+        self.tags_row = ft.Row(wrap=True, spacing=5, run_spacing=5)
 
         #分类切换
         self.category_toggle = ft.SegmentedButton(
@@ -59,10 +63,9 @@ class HomeView:
             ]
         )
 
-        #列表网格
         self.main_grid = ft.GridView(expand=True, spacing=10, run_spacing=10, padding=10)
 
-        #发布页组件
+        #发布页
         self.input_title = ft.TextField(label="标题 (简短清晰)")
         self.input_desc = ft.TextField(label="详细描述", multiline=True, min_lines=3)
         self.input_loc = ft.TextField(label="地点", icon=ft.Icons.LOCATION_ON)
@@ -93,6 +96,46 @@ class HomeView:
     def do_search(self, e):
         self.load_data(self.search_bar.value)
 
+    def on_tag_click(self, e):
+        tag_data = e.control.data
+        tag_text = tag_data['text']
+        target_cat = tag_data['cat']
+
+        self.search_bar.value = tag_text
+
+        if self.current_category != target_cat:
+            self.current_category = target_cat
+            self.category_toggle.selected = {target_cat}
+            self.category_toggle.update()
+
+        self.load_data(tag_text)
+        self.page.update()
+
+    def load_tags(self):
+        try:
+            res = APIClient.get_tags()
+            if res.status_code == 200:
+                tags = res.json().get('data', [])
+
+                self.tags_row.controls.clear()
+                for t in tags:
+                    is_skill = (t['cat'] == 'skill')
+                    chip_color = "#e3f2fd" if is_skill else "#ffebee"
+                    text_color = "blue" if is_skill else "red"
+                    icon = ft.Icons.TOKEN if is_skill else ft.Icons.SEARCH
+
+                    self.tags_row.controls.append(
+                        ft.Chip(
+                            label=ft.Text(t['text']),
+                            leading=ft.Icon(icon, size=14, color=text_color),
+                            on_click=self.on_tag_click,
+                            bgcolor=chip_color,
+                            label_style=ft.TextStyle(color=text_color, size=12),
+                            data=t
+                        )
+                    )
+        except Exception as ex:
+            print(f"Tags error: {ex}")
 
     def open_filter_dispatcher(self, e):
         if self.current_category == "skill":
@@ -100,56 +143,44 @@ class HomeView:
         else:
             self.open_lost_filter_dialog(e)
 
-
     def open_skill_filter(self, e):
         input_kw = ft.TextField(
-            label="关键词 (例如: python/取快递)",
-            value=self.filter_skill_keyword,
-            prefix_icon=ft.Icons.SEARCH
+            label="关键词", value=self.filter_skill_keyword, prefix_icon=ft.Icons.SEARCH
         )
-
         btn_provide = ft.ElevatedButton("只看【我能提供】", data=1)
         btn_need = ft.ElevatedButton("只看【需要帮助】", data=2)
 
         def update_btn_style():
             btn_provide.bgcolor = "blue" if self.filter_skill_type == 1 else "grey"
             btn_provide.color = "white"
-
             btn_need.bgcolor = "blue" if self.filter_skill_type == 2 else "grey"
             btn_need.color = "white"
-
             if self.page: self.page.update()
 
         def on_type_click(e):
             clicked_val = e.control.data
             if self.filter_skill_type == clicked_val:
-                #取消选中
                 self.filter_skill_type = None
             else:
-                #选中
                 self.filter_skill_type = clicked_val
             update_btn_style()
 
         btn_provide.on_click = on_type_click
         btn_need.on_click = on_type_click
-
-        #初始化样式
         update_btn_style()
 
         def do_confirm(e):
             self.filter_skill_keyword = input_kw.value
             self.page.dialog.open = False
             self.page.update()
-            self.load_data()  
+            self.load_data()
 
-        #定义弹窗
         dlg = ft.AlertDialog(
             title=ft.Text("筛选技能"),
             content=ft.Column([
                 input_kw,
                 ft.Text("类型筛选:", weight="bold"),
                 ft.Row([btn_provide, btn_need], alignment=ft.MainAxisAlignment.SPACE_AROUND),
-                ft.Text("提示: 点击蓝色按钮可取消选中", size=10, color="grey")
             ], height=180, tight=True),
             actions=[
                 ft.TextButton("取消", on_click=lambda _: setattr(dlg, 'open', False) or self.page.update()),
@@ -162,7 +193,7 @@ class HomeView:
 
     #失物招领筛选弹窗
     def open_lost_filter_dialog(self, e):
-        input_kw = ft.TextField(label="关键词 (物品名/描述)", value=self.filter_lost_keyword)
+        input_kw = ft.TextField(label="关键词", value=self.filter_lost_keyword)
         input_loc = ft.TextField(label="地点", value=self.filter_lost_location)
 
         def do_confirm(e):
@@ -181,10 +212,7 @@ class HomeView:
 
         dlg = ft.AlertDialog(
             title=ft.Text("高级筛选"),
-            content=ft.Column([
-                input_kw,
-                input_loc
-            ], height=180, tight=True),
+            content=ft.Column([input_kw, input_loc], height=180, tight=True),
             actions=[
                 ft.TextButton("清空条件", on_click=do_clear),
                 ft.TextButton("确定", on_click=do_confirm),
@@ -193,7 +221,6 @@ class HomeView:
         self.page.dialog = dlg
         dlg.open = True
         self.page.update()
-
 
     def load_data(self, keyword_from_bar=""):
         self.main_grid.controls.clear()
@@ -208,16 +235,12 @@ class HomeView:
         try:
             if self.current_category == "skill":
                 final_keyword = keyword_from_bar if keyword_from_bar else self.filter_skill_keyword
-
                 res = APIClient.get_skills(final_keyword)
-
                 if res.status_code == 200:
                     data = res.json().get('data', [])
                     for item in data:
                         if self.filter_skill_type is not None:
-                            if item.get('type') != self.filter_skill_type:
-                                continue
-
+                            if item.get('type') != self.filter_skill_type: continue
                         self.main_grid.controls.append(
                             create_skill_card(item, lambda e: self.on_item_click(e.control.data, "skill")))
             else:
@@ -236,17 +259,22 @@ class HomeView:
 
     def get_main_view(self):
         self.load_data()
+        self.load_tags()
 
         search_row = ft.Row(
-            [
-                ft.Container(content=self.search_bar, expand=True),
-                self.filter_btn
-            ],
+            [self.search_bar, self.filter_btn],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN
         )
 
         return ft.Column([
-            ft.Container(content=search_row, padding=ft.padding.only(left=15, right=15, top=10), bgcolor="white"),
+            ft.Container(
+                content=ft.Column([
+                    search_row,
+                    ft.Container(content=self.tags_row, padding=ft.padding.only(top=5))
+                ]),
+                padding=ft.padding.only(left=15, right=15, top=10),
+                bgcolor="white"
+            ),
             ft.Container(padding=10, content=self.category_toggle),
             self.main_grid
         ], spacing=0)
@@ -257,7 +285,6 @@ class HomeView:
         self.input_loc.visible = not is_skill
         self.input_cost.visible = is_skill
         self.page.update()
-
 
     def get_post_view(self, on_success_nav):
         def submit(e):

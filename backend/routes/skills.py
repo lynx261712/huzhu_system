@@ -36,7 +36,7 @@ def create_skill():
     try:
         title = request.form.get('title')
         cost = request.form.get('cost')
-        type_val = request.form.get('type', 1, type=int)  
+        type_val = request.form.get('type', 1, type=int)
         user_id = request.form.get('user_id', type=int)
 
         if not title or not user_id:
@@ -60,13 +60,13 @@ def create_skill():
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
-#接单
+#接单接口
 @bp.route('/order/accept', methods=['POST'])
 def accept_order():
     try:
         data = request.get_json()
         item_id = data.get('id')
-        category = data.get('category')  
+        category = data.get('category')
         user_id = data.get('user_id')
 
         model = Skill if category == 'skill' else LostItem
@@ -99,17 +99,46 @@ def finish_order():
         item_id = data.get('id')
         category = data.get('category')
 
-        model = Skill if category == 'skill' else LostItem
-        item = model.query.get(item_id)
+        if category == 'skill':
+            item = Skill.query.get(item_id)
+        else:
+            item = LostItem.query.get(item_id)
 
-        if not item:
-            return jsonify({"code": 404, "msg": "未找到订单"}), 404
+        if not item: return jsonify({"code": 404, "msg": "未找到订单"}), 404
+
+        #防止重复结算
+        if item.status != 1:
+            return jsonify({"code": 400, "msg": "订单状态不正确"}), 400
+
+        #积分结算
+        reward_points = 5
+        target_user = None
+
+        publisher = User.query.get(item.user_id)
+        helper = User.query.get(item.helper_id)
+
+        if category == 'skill':
+            if item.type == 1:
+                target_user = publisher
+            else:
+                target_user = helper
+
+        elif category == 'lost':
+            if item.type == 1:
+                target_user = publisher
+            else:
+                target_user = helper
+
+        if target_user:
+            target_user.points += reward_points
 
         item.status = 2
-
         db.session.commit()
-        return jsonify({"code": 200, "msg": "订单已完成"})
+
+        msg = f"订单已完成，{target_user.username if target_user else '用户'} 积分+5"
+        return jsonify({"code": 200, "msg": msg})
     except Exception as e:
+        print(e)
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -120,8 +149,8 @@ def review_order():
         data = request.get_json()
         item_id = data.get('id')
         category = data.get('category')
-        action = data.get('action') 
-        current_uid = data.get('current_user_id')  
+        action = data.get('action')
+        current_uid = data.get('current_user_id')
 
         model = Skill if category == 'skill' else LostItem
         item = model.query.get(item_id)
@@ -135,7 +164,6 @@ def review_order():
             if item.poster_review != 0: return jsonify({"code": 400, "msg": "您已评价过"}), 400
 
             item.poster_review = 1 if action == 'reward' else 2
-
             if item.helper_id:
                 target_user = User.query.get(item.helper_id)
 
@@ -143,7 +171,6 @@ def review_order():
             if item.helper_review != 0: return jsonify({"code": 400, "msg": "您已评价过"}), 400
 
             item.helper_review = 1 if action == 'reward' else 2
-
             target_user = User.query.get(item.user_id)
 
         else:
@@ -204,7 +231,7 @@ def get_my_helps(user_id):
                 "title": obj.title,
                 "image": obj.image,
                 "status": obj.status,
-                "create_time": time_str, 
+                "create_time": time_str,
                 "is_poster": is_poster,
                 "target_id": target_id,
                 "target_name": target_name,
@@ -218,4 +245,45 @@ def get_my_helps(user_id):
         return jsonify({"code": 200, "data": data})
     except Exception as e:
         print(f"Get helps error: {e}")
+        return jsonify({"code": 500, "msg": str(e)}), 500
+
+
+#获取热门标签
+@bp.route('/tags', methods=['GET'])
+def get_hot_tags():
+    try:
+        skill_titles = db.session.query(Skill.title) \
+            .filter_by(status=0) \
+            .order_by(Skill.create_time.desc()) \
+            .limit(6).all()
+
+        lost_titles = db.session.query(LostItem.title) \
+            .filter_by(status=0) \
+            .order_by(LostItem.create_time.desc()) \
+            .limit(4).all()
+
+        tags = []
+        seen_titles = set()
+
+        for t in skill_titles:
+            if t[0] and t[0] not in seen_titles:
+                tags.append({"text": t[0], "cat": "skill"})
+                seen_titles.add(t[0])
+
+        for t in lost_titles:
+            if t[0] and t[0] not in seen_titles:
+                tags.append({"text": t[0], "cat": "lost"})
+                seen_titles.add(t[0])
+
+        #默认
+        if not tags:
+            tags = [
+                {"text": "Python", "cat": "skill"},
+                {"text": "雨伞", "cat": "lost"}
+            ]
+
+        #返回前8个
+        return jsonify({"code": 200, "data": tags[:8]})
+    except Exception as e:
+        print(e)
         return jsonify({"code": 500, "msg": str(e)}), 500

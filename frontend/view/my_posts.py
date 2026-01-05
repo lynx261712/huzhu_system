@@ -18,7 +18,7 @@ def MyPostsView(user_id, on_back, show_msg):
         action = e.control.data['action']
         item_data = e.control.data['item']
         try:
-            res = APIClient.review_order(item_data['id'], item_data['category'], action)
+            res = APIClient.review_order(item_data['id'], item_data['category'], action, user_id)
             if res.status_code == 200:
                 show_msg(res.json().get('msg'), "green")
                 load_data()

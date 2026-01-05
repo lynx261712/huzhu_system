@@ -55,18 +55,15 @@ def create_lost_item():
         )
         db.session.add(new_item)
 
-        #积分奖励
-        user = User.query.get(user_id)
-        if user and new_item.type == 1:  #捡到东西
-            user.points += 5
-
         db.session.commit()
         return jsonify({"code": 200, "msg": "发布成功"})
     except Exception as e:
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
-
 @bp.route('/lost-items/tags', methods=['GET'])
 def get_search_tags():
-    pass
+    try:
+        return jsonify({"code": 200, "data": []})
+    except:
+        return jsonify({"code": 200, "data": []})
