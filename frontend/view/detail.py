@@ -5,7 +5,7 @@ from api_client import APIClient
 def DetailView(item, category, on_back, show_msg, current_user, on_nav_to_chat):
     detail_img = ft.Image(src=item['image'], width=float("inf"), height=200, fit=ft.ImageFit.COVER)
 
-    #聊天/联系
+    # 聊天/联系
     def go_chat(e):
         if not current_user['id']: return show_msg("请先登录")
 
@@ -14,6 +14,18 @@ def DetailView(item, category, on_back, show_msg, current_user, on_nav_to_chat):
 
         if str(target_id) == str(current_user['id']):
             return show_msg("不能和自己聊天")
+
+        #创建会话关联
+        try:
+            #通知后端这个人要咨询这个任务
+            APIClient.start_inquiry(
+                task_id=item['id'],
+                task_type=category,
+                visitor_id=current_user['id']
+            )
+        except Exception as ex:
+            print(f"会话创建警告: {ex}")
+        #----------------------------
 
         on_nav_to_chat(target_id, target_name)
 
@@ -26,7 +38,7 @@ def DetailView(item, category, on_back, show_msg, current_user, on_nav_to_chat):
             res = APIClient.accept_order(item['id'], category, current_user['id'])
             if res.status_code == 200:
                 show_msg("接单成功！请在'我的帮助'中查看", "green")
-                on_back(None)  
+                on_back(None)
             else:
                 show_msg(res.json().get('msg', "接单失败"))
         except Exception as ex:

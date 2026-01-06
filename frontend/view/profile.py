@@ -64,6 +64,7 @@ def ProfileView(user_id, on_logout, show_msg, on_nav_to_help, on_nav_to_my_posts
     def load_profile():
         if content_col.page and avatar_picker not in content_col.page.overlay:
             content_col.page.overlay.append(avatar_picker)
+            content_col.page.update()
 
         try:
             res = APIClient.get_user_info(user_id)

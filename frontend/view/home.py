@@ -137,6 +137,7 @@ class HomeView:
         except Exception as ex:
             print(f"Tags error: {ex}")
 
+    #筛选器分发逻辑
     def open_filter_dispatcher(self, e):
         if self.current_category == "skill":
             self.open_skill_filter(e)
@@ -222,9 +223,10 @@ class HomeView:
         dlg.open = True
         self.page.update()
 
+    #根据当前选中的 Tab技能/失物 加载对应数据
     def load_data(self, keyword_from_bar=""):
         self.main_grid.controls.clear()
-
+        #根据分类调整布局 技能是方卡片一行2个，失物是长条卡片一行1个
         if self.current_category == "skill":
             self.main_grid.runs_count = 2
             self.main_grid.child_aspect_ratio = 0.75
@@ -233,23 +235,33 @@ class HomeView:
             self.main_grid.child_aspect_ratio = 2.5
 
         try:
+            #优先使用搜索框的词，如果搜索框没词，就用筛选器里的词
             if self.current_category == "skill":
                 final_keyword = keyword_from_bar if keyword_from_bar else self.filter_skill_keyword
                 res = APIClient.get_skills(final_keyword)
                 if res.status_code == 200:
                     data = res.json().get('data', [])
+                    print(f"DEBUG: 主页加载了 {len(data)} 条技能数据")
+
                     for item in data:
+                        #前端过滤 如果选了只看提供或只看需求，滤掉不符合的
                         if self.filter_skill_type is not None:
                             if item.get('type') != self.filter_skill_type: continue
+                        #创建技能卡片组件
                         self.main_grid.controls.append(
                             create_skill_card(item, lambda e: self.on_item_click(e.control.data, "skill")))
             else:
+                #加载失物招领数据，支持关键词和地点双重筛选
                 res = APIClient.get_lost_items(
                     keyword=keyword_from_bar or self.filter_lost_keyword,
                     location=self.filter_lost_location
                 )
+
                 if res.status_code == 200:
-                    for item in res.json().get('data', []):
+                    data = res.json().get('data', [])
+                    print(f"DEBUG: 主页加载了 {len(data)} 条失物数据")
+
+                    for item in data:
                         self.main_grid.controls.append(
                             create_lost_card(item, lambda e: self.on_item_click(e.control.data, "lost")))
         except Exception as e:

@@ -28,6 +28,7 @@ class APIClient:
     @staticmethod
     def post_item(endpoint, form_data, file_path=None):
         url = f"{API_BASE_URL}/{endpoint}"
+        print(f"DEBUG: 正在向 {url} 发送数据, 是否有文件: {bool(file_path)}")
         if file_path and os.path.exists(file_path):
             try:
                 with open(file_path, 'rb') as f:
@@ -61,6 +62,7 @@ class APIClient:
                 return requests.post(url, data=form_data, files=files)
         else:
             return requests.post(url, data=form_data)
+
     @staticmethod
     def delete_item(item_id, category):
         return requests.post(f"{API_BASE_URL}/delete", json={"id": item_id, "category": category})
@@ -83,7 +85,7 @@ class APIClient:
             "id": item_id,
             "category": category,
             "action": action,
-            "current_user_id": current_user_id  # 【新增】
+            "current_user_id": current_user_id
         })
 
     @staticmethod
@@ -114,3 +116,31 @@ class APIClient:
     @staticmethod
     def get_tags():
         return requests.get(f"{API_BASE_URL}/tags")
+
+
+    @staticmethod
+    def start_inquiry(task_id, task_type, visitor_id):
+        """点击详情页联系时调用，创建会话"""
+        url = f"{API_BASE_URL}/chat/start"
+        payload = {
+            "task_id": task_id,
+            "task_type": task_type,
+            "visitor_id": visitor_id
+        }
+        return requests.post(url, json=payload)
+
+    @staticmethod
+    def get_task_inquiries(task_id, task_type):
+        """点击发布管理卡片的咨询按钮时调用，获取咨询人列表"""
+        url = f"{API_BASE_URL}/task/inquiries"
+        params = {
+            "task_id": task_id,
+            "task_type": task_type
+        }
+        return requests.get(url, params=params)
+
+    @staticmethod
+    def get_inquiry_counts(user_id):
+        """加载我的发布列表时调用，获取每个任务有多少人咨询"""
+        url = f"{API_BASE_URL}/user/task_inquiry_counts"
+        return requests.get(url, params={"user_id": user_id})
