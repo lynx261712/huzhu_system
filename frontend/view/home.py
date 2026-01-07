@@ -31,7 +31,15 @@ class HomeView:
         #UI组件
         self.search_bar = ft.TextField(
             hint_text="搜索...",
-            prefix_icon=ft.Icons.SEARCH,
+
+            prefix=ft.IconButton(
+                icon=ft.Icons.SEARCH,
+                icon_size=18,
+                on_click=self.do_search,
+                width=35,
+                height=35,
+                style=ft.ButtonStyle(padding=0)
+            ),
             border_radius=20,
             height=40,
             content_padding=10,
@@ -319,7 +327,10 @@ class HomeView:
                 form_data.update({"desc": self.input_desc.value, "location": self.input_loc.value})
                 endpoint = "lost-items"
             else:
-                form_data.update({"cost": self.input_cost.value or "面议"})
+                form_data.update({
+                    "cost": self.input_cost.value or "面议",
+                    "desc": self.input_desc.value
+                })
                 endpoint = "skills"
 
             try:

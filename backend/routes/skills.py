@@ -28,11 +28,12 @@ def get_skills():
             data.append({
                 "id": s.id, "title": s.title, "cost": s.cost, "type": s.type,
                 "image": s.image, "status": s.status,
-                "user": author_name, "user_id": s.user_id
+                "user": author_name, "user_id": s.user_id,
+                "desc": s.desc  # 【修改】返回详细描述 desc
             })
         return jsonify({"code": 200, "data": data})
     except Exception as e:
-        print(f"Error in get_skills: {e}")  #方便排错
+        print(f"Error in get_skills: {e}")  # 方便排错
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -43,6 +44,9 @@ def create_skill():
         #print("DEBUG: 收到发布请求...")
         title = request.form.get('title')
         cost = request.form.get('cost')
+
+        desc = request.form.get('desc')
+
         #1提供技能, 2求助
         type_val = request.form.get('type', 1, type=int)
         user_id = request.form.get('user_id', type=int)
@@ -57,6 +61,7 @@ def create_skill():
         new_skill = Skill(
             title=title,
             cost=cost,
+            desc=desc,
             type=type_val,
             image=image_url,
             user_id=user_id
@@ -173,7 +178,7 @@ def review_order():
         data = request.get_json()
         item_id = data.get('id')
         category = data.get('category')
-        action = data.get('action')  #reward好评  complaint差评
+        action = data.get('action')  # reward好评  complaint差评
         current_uid = data.get('current_user_id')
 
         model = Skill if category == 'skill' else LostItem

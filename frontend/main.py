@@ -94,7 +94,7 @@ def main(page: ft.Page):
         page.update()
 
     def go_my_posts(e):
-        # [修改] 定义跳转聊天的回调，聊完返回 MyPosts
+        #定义跳转聊天的回调，聊完返回MyPosts
         def chat_callback(pid, pname):
             render_chat(pid, pname, lambda e: go_my_posts(None))
 
@@ -102,7 +102,7 @@ def main(page: ft.Page):
             current_user['id'],
             lambda e: switch_tab(2),
             show_msg,
-            chat_callback # [修改] 传入这个参数修复报错
+            chat_callback
         )
         page.update()
 

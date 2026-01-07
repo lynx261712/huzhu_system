@@ -121,6 +121,8 @@ class Skill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
 
+    desc = db.Column(db.Text)
+
     #报酬/代价
     cost = db.Column(db.String(100), nullable=False)
 

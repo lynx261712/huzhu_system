@@ -5,7 +5,7 @@ from api_client import APIClient
 def DetailView(item, category, on_back, show_msg, current_user, on_nav_to_chat):
     detail_img = ft.Image(src=item['image'], width=float("inf"), height=200, fit=ft.ImageFit.COVER)
 
-    # 聊天/联系
+    #聊天/联系
     def go_chat(e):
         if not current_user['id']: return show_msg("请先登录")
 
@@ -50,7 +50,13 @@ def DetailView(item, category, on_back, show_msg, current_user, on_nav_to_chat):
         ft.ElevatedButton("🙋‍♂️ 接收", on_click=do_accept, expand=1, bgcolor="orange", color="white")
     ])
 
-    content_val = f"代价: {item.get('cost')}" if category == "skill" else f"描述: {item.get('desc')}"
+
+    if category == "skill":
+        desc_text = item.get('desc') or "暂无详细描述"
+        cost_text = item.get('cost') or "面议"
+        content_val = f"详细描述: {desc_text}\n\n互助代价: {cost_text}"
+    else:
+        content_val = f"描述: {item.get('desc')}"
 
     meta_info = []
     if category == "skill":
