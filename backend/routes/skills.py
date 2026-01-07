@@ -133,8 +133,14 @@ def finish_order():
             return jsonify({"code": 400, "msg": "订单状态不正确(必须是进行中才能完成)"}), 400
 
         #积分结算逻辑
-        #谁出力，谁得5分
-        reward_points = 5
+        #谁出力，谁得分
+
+        #根据分类设置不同的奖励分值
+        if category == 'lost':
+            reward_points = 2  #失物招领 +2
+        else:
+            reward_points = 5  #技能互助 +5
+
         target_user = None
 
         publisher = User.query.get(item.user_id)  #发布者
@@ -164,7 +170,8 @@ def finish_order():
         item.status = 2
         db.session.commit()
 
-        msg = f"订单已完成，{target_user.username if target_user else '用户'} 积分+5"
+
+        msg = f"订单已完成，{target_user.username if target_user else '用户'} 积分+{reward_points}"
         return jsonify({"code": 200, "msg": msg})
     except Exception as e:
         print(f"Finish order error: {e}")

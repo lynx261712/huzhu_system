@@ -108,6 +108,10 @@ def MyPostsView(user_id, on_back, show_msg, on_nav_to_chat):
             for item in items:
                 status = item.get('status', 0)
 
+                #只显示状态为0待接单的帖子
+                if status != 0:
+                    continue
+
                 cat = item.get('category', 'skill')
                 tid = item['id']
                 count_key = f"{cat}_{tid}"

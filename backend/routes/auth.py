@@ -75,9 +75,29 @@ def get_user_posts(user_id):
     losts = LostItem.query.filter_by(user_id=user_id).all()
     data = []
     for s in skills:
-        data.append({"id": s.id, "category": "skill", "title": s.title, "tag": "提供" if s.type==1 else "求助", "color": "blue" if s.type==1 else "orange", "image": s.image, "info": s.cost, "create_time": s.create_time.strftime("%m-%d")})
+        data.append({
+            "id": s.id,
+            "category": "skill",
+            "title": s.title,
+            "tag": "提供" if s.type==1 else "求助",
+            "color": "blue" if s.type==1 else "orange",
+            "image": s.image,
+            "info": s.cost,
+            "create_time": s.create_time.strftime("%m-%d"),
+            "status": s.status  #添加status
+        })
     for l in losts:
-        data.append({"id": l.id, "category": "lost", "title": l.title, "tag": "捡到" if l.type==1 else "丢失", "color": "green" if l.type==1 else "red", "image": l.image, "info": l.location, "create_time": l.create_time.strftime("%m-%d")})
+        data.append({
+            "id": l.id,
+            "category": "lost",
+            "title": l.title,
+            "tag": "捡到" if l.type==1 else "丢失",
+            "color": "green" if l.type==1 else "red",
+            "image": l.image,
+            "info": l.location,
+            "create_time": l.create_time.strftime("%m-%d"),
+            "status": l.status
+        })
     data.sort(key=lambda x: x['create_time'], reverse=True)
     return jsonify({"code": 200, "data": data})
 
